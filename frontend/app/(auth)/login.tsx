@@ -9,7 +9,7 @@ import * as Icons from 'phosphor-react-native'
 import { verticalScale } from '@/utils/styling'
 import { useRouter } from 'expo-router'
 import Button from '@/components/Button'
-import { useAuth } from '@/contexts/authContext' // ← Import useAuth
+import { useAuth } from '@/contexts/authContext'
 
 const Login = () => {
   const emailRef = useRef("");

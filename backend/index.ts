@@ -4,12 +4,17 @@ import cors from "cors";
 import dotenv from "dotenv";
 import connectDB from "./config/db";
 import authRoutes from "./routes/auth.routes";
+import { initializeSocket } from "./socket/socket";
 
 dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
 const PORT = process.env.PORT || 4000;
+
+// socket setup
+
+initializeSocket(server);
 
 // middleware
 app.use(cors());
