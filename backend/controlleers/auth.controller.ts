@@ -1,80 +1,89 @@
-import { Request, Response } from "express"
-import User from "../modals/User"
-import bcrypt from "bcryptjs"
-import { generateToken } from "../utils/token"
+import { Request, Response } from "express";
+import User from "../modals/User";
+import bcrypt from "bcryptjs";
+import { generateToken } from "../utils/token";
 
-export const registerUser = async (req: Request, res: Response): Promise<void>=> {
-  const {email, password, name, avatar} = req.body
+export const registerUser = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   try {
-    // check if already exists
-    let user = await User.findOne({email})
-    if (user) {
-      res.status(400).json({success: false, msg: "User already exists"})
+    const { email, password, name, avatar } = req.body || {};
+
+    if (!email || !password || !name) {
+      res
+        .status(400)
+        .json({ success: false, msg: "Email, password and name are required" });
       return;
     }
 
-    // create new user
+    let user = await User.findOne({ email });
+
+    if (user) {
+      res.status(400).json({ success: false, msg: "User already exists" });
+      return;
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
     user = new User({
       email,
-      password,
+      password: hashedPassword,
       name,
       avatar: avatar || "",
-    })
+    });
 
-    // hash the password
+    await user.save();
 
-    const salt = await bcrypt.genSalt(10)
-    user.password = await bcrypt.hash(password, salt)
+    const token = generateToken(user);
 
-    // save user to db
-    await user.save()
-
-    // gen token
-    const token = generateToken(user)
-
-    res.json({
+    res.status(201).json({
       success: true,
-      token
-    })
-
+      token,
+    });
   } catch (error) {
-    console.log("error:", error)
-    res.status(500).json({success: false, msg: "Server error"});
-    
+    console.log("error:", error);
+    res.status(500).json({ success: false, msg: "Server error" });
   }
-}
+};
 
-
-
-export const loginUser = async (req: Request, res: Response): Promise<void>=> {
-  const {email, password} = req.body
+export const loginUser = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   try {
-    // check if user exists
-    const user = await User.findOne({email})
+    const { email, password } = req.body || {};
+
+    if (!email || !password) {
+      res
+        .status(400)
+        .json({ success: false, msg: "Email and password are required" });
+      return;
+    }
+
+    const user = await User.findOne({ email });
+
     if (!user) {
-      res.status(400).json({success: false, msg: "Invalid credentials"})
+      res.status(400).json({ success: false, msg: "Invalid credentials" });
       return;
     }
 
-    // check password
-    const isMatch = await bcrypt.compare(password, user.password)
+    const isMatch = await bcrypt.compare(password, user.password);
+
     if (!isMatch) {
-      res.status(400).json({success: false, msg: "Invalid credentials"})
+      res.status(400).json({ success: false, msg: "Invalid credentials" });
       return;
     }
 
-
-    // gen token
-    const token = generateToken(user)
+    const token = generateToken(user);
 
     res.json({
       success: true,
-      token
-    })
-
+      token,
+    });
   } catch (error) {
-    console.log("error:", error)
-    res.status(500).json({success: false, msg: "Server error"});
-    
+    console.log("error:", error);
+    res.status(500).json({ success: false, msg: "Server error" });
   }
-}
+};
