@@ -23,12 +23,20 @@ export interface UserProps {
   name: string;
   avatar?: string | null;
   id?: string;
-  // Add any additional fields from the token payload as needed
+  username?: string;
+  phone?: string;
+  address?: string;
+  bio?: string;
 }
+
 export interface UserDataProps {
   name: string;
   email: string;
-  avatar?: any;
+  avatar?: string | null;
+  username?: string;
+  phone?: string;
+  address?: string;
+  bio?: string;
 }
 
 export interface InputProps extends TextInputProps {
@@ -36,8 +44,6 @@ export interface InputProps extends TextInputProps {
   containerStyle?: ViewStyle;
   inputStyle?: TextStyle;
   inputRef?: React.RefObject<TextInput>;
-  //   label?: string;
-  //   error?: string;
 }
 
 export interface DecodedTokenProps {

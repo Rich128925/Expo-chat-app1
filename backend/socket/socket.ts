@@ -12,7 +12,6 @@ export function initializeSocket(server: any): SocketIOServer {
     },
   });
 
-  // 🔐 Auth middleware
   io.use((socket: Socket, next) => {
     const token = socket.handshake.auth?.token;
 
@@ -28,22 +27,19 @@ export function initializeSocket(server: any): SocketIOServer {
       const userData = decoded.user;
 
       socket.data.user = userData;
-      socket.data.userId = userData._id || userData.name;
+      socket.data.userId = userData.id;
 
-      next(); 
+      next();
     });
   });
 
-  // 🔌 Connection handler
   io.on("connection", (socket: Socket) => {
     console.log(
       `🔌 Socket connected: ${socket.id} (User ID: ${socket.data.userId})`
     );
 
-    // Register user
     registerUserEvents(io, socket);
 
-    // disconnect event
     socket.on("disconnect", () => {
       console.log(
         `🔌 Socket disconnected: ${socket.id} (User ID: ${socket.data.userId})`
