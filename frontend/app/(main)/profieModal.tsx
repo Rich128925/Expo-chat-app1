@@ -13,6 +13,8 @@ import { useAuth } from '@/contexts/authContext'
 import Button from '@/components/Button'
 import { useRouter } from 'expo-router'
 import { updateProfile, UpdateProfileResponse } from '@/socket/socketEvents'
+import * as ImagePicker from 'expo-image-picker'
+import { uploadFileToCloudinary } from '@/service/imageService'
 
 const ProfileModal = () => {
   const { user, signOut, updateToken } = useAuth()
@@ -44,30 +46,29 @@ const ProfileModal = () => {
 
   useEffect(() => {
     const updateProfileHandler = async (response: UpdateProfileResponse) => {
-  console.log("📥 updateProfile response:", response);
+      console.log('📥 updateProfile response:', response)
 
-  try {
-    if (response?.success) {
-      if (response?.data?.token) {
-        await updateToken(response.data.token)
+      try {
+        if (response?.success) {
+          if (response?.data?.token) {
+            await updateToken(response.data.token)
+          }
+
+          Alert.alert('Success', response.msg || 'Profile updated successfully')
+
+          setTimeout(() => {
+            router.back()
+          }, 300)
+        } else {
+          Alert.alert('Error', response?.msg || 'Something went wrong')
+        }
+      } catch (error) {
+        console.log('updateProfile response handling error:', error)
+        Alert.alert('Error', 'Something went wrong')
+      } finally {
+        setLoading(false)
       }
-
-      Alert.alert('Success', response.msg || 'Profile updated successfully')
-
-      // 👇 Delay navigation slightly to ensure UI updates
-      setTimeout(() => {
-        router.back()
-      }, 300)
-
-    } else {
-      Alert.alert('Error', response?.msg || 'Something went wrong')
     }
-  } catch (error) {
-    console.log('updateProfile response handling error:', error)
-  } finally {
-    setLoading(false)
-  }
-}
 
     updateProfile(updateProfileHandler)
 
@@ -75,6 +76,36 @@ const ProfileModal = () => {
       updateProfile(updateProfileHandler, true)
     }
   }, [router, updateToken])
+
+  const onPickImage = async () => {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
+
+      if (!permission.granted) {
+        Alert.alert('Permission required', 'Please allow access to your photos')
+        return
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        aspect: [4, 3],
+        quality: 0.5,
+        allowsEditing: true,
+      })
+
+      console.log('picked image:', result)
+
+      if (!result.canceled) {
+        setUserData((prev) => ({
+          ...prev,
+          avatar: result.assets[0].uri,
+        }))
+      }
+    } catch (error) {
+      console.log('image picker error:', error)
+      Alert.alert('Error', 'Could not pick image')
+    }
+  }
 
   const handleLogout = async () => {
     router.back()
@@ -114,16 +145,31 @@ const ProfileModal = () => {
     try {
       setLoading(true)
 
-      const payload = {
-        name: userData.name,
-        avatar: userData.avatar,
-        username: userData.username,
-        phone: userData.phone,
-        address: userData.address,
-        bio: userData.bio,
+      let avatarUrl = userData.avatar
+
+      if (avatarUrl && avatarUrl.startsWith('file://')) {
+        const res = await uploadFileToCloudinary(avatarUrl, 'profiles')
+        console.log('upload result:', res)
+
+        if (!res.success) {
+          Alert.alert('Upload Error', res.msg || 'Could not upload image')
+          setLoading(false)
+          return
+        }
+
+        avatarUrl = res.data
       }
 
-      console.log('sending updated profile:', payload)
+      const payload = {
+        name: userData.name.trim(),
+        avatar: avatarUrl,
+        username: userData.username.trim(),
+        phone: userData.phone.trim(),
+        address: userData.address.trim(),
+        bio: userData.bio.trim(),
+      }
+
+      console.log('📤 sending updated profile:', payload)
       updateProfile(payload)
     } catch (error) {
       console.log('profile update error:', error)
@@ -138,7 +184,7 @@ const ProfileModal = () => {
         <View style={styles.content}>
           <Header
             title={'Update Profile'}
-            leftIcon={Platform.OS == 'android' && <BackButton color={colors.black} />}
+            leftIcon={Platform.OS === 'android' && <BackButton color={colors.black} />}
             style={{ marginBottom: spacingY._15 }}
           />
 
@@ -149,7 +195,7 @@ const ProfileModal = () => {
             <View style={styles.avatarContainer}>
               <Avatar uri={userData.avatar} size={verticalScale(140)} />
 
-              <TouchableOpacity style={styles.editIcon}>
+              <TouchableOpacity style={styles.editIcon} onPress={onPickImage}>
                 <Icons.Pencil
                   size={verticalScale(16)}
                   color={colors.neutral800}
@@ -165,7 +211,7 @@ const ProfileModal = () => {
                 editable={false}
                 containerStyle={styles.emailInput}
                 onChangeText={(value: string) =>
-                  setUserData({ ...userData, email: value })
+                  setUserData((prev) => ({ ...prev, email: value }))
                 }
               />
             </View>
@@ -176,7 +222,7 @@ const ProfileModal = () => {
                 value={userData.name}
                 containerStyle={styles.input}
                 onChangeText={(value: string) =>
-                  setUserData({ ...userData, name: value })
+                  setUserData((prev) => ({ ...prev, name: value }))
                 }
               />
             </View>
@@ -187,7 +233,7 @@ const ProfileModal = () => {
                 value={userData.username}
                 containerStyle={styles.input}
                 onChangeText={(value: string) =>
-                  setUserData({ ...userData, username: value })
+                  setUserData((prev) => ({ ...prev, username: value }))
                 }
               />
             </View>
@@ -199,7 +245,7 @@ const ProfileModal = () => {
                 keyboardType="phone-pad"
                 containerStyle={styles.input}
                 onChangeText={(value: string) =>
-                  setUserData({ ...userData, phone: value })
+                  setUserData((prev) => ({ ...prev, phone: value }))
                 }
               />
             </View>
@@ -210,7 +256,7 @@ const ProfileModal = () => {
                 value={userData.address}
                 containerStyle={styles.input}
                 onChangeText={(value: string) =>
-                  setUserData({ ...userData, address: value })
+                  setUserData((prev) => ({ ...prev, address: value }))
                 }
               />
             </View>
@@ -222,7 +268,7 @@ const ProfileModal = () => {
                 multiline
                 containerStyle={styles.bioInput}
                 onChangeText={(value: string) =>
-                  setUserData({ ...userData, bio: value })
+                  setUserData((prev) => ({ ...prev, bio: value }))
                 }
               />
             </View>
