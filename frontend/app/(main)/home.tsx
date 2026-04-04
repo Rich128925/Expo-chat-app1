@@ -1,5 +1,5 @@
-import { StyleSheet, TouchableOpacity, View} from 'react-native'
-import React, { useEffect } from 'react'
+import { ScrollView, StyleSheet, TouchableOpacity, View} from 'react-native'
+import React, { useEffect, useState } from 'react'
 import ScreenWrapper from '@/components/ScreenWrapper'
 import Typo from '@/components/Typo'
 import { colors, radius, spacingX, spacingY } from '@/constants/theme'
@@ -9,11 +9,14 @@ import { testSocket } from '@/socket/socketEvents'
 import { verticalScale } from '@/utils/styling'
 import * as Icons from 'phosphor-react-native'
 import { useRouter } from 'expo-router'
+import ConversationItem from '@/components/ConversationItem'
+import Loading from '@/components/Loading'
 
 const Home = () => {
   const { user, signOut } = useAuth();
   const router = useRouter();
-
+  const [selectedTab, setSelectedTab] = useState(0)
+  const [loading, setLoading] = useState(false)
   // useEffect(()=>{
   //   testSocket(testSocketCallbackHandler)
   //   testSocket({msg: "It's working!!!"})
@@ -32,6 +35,71 @@ const Home = () => {
     await signOut();
   }
 
+  const conversations =[
+    {
+      name: "Alice",
+      type: "direct",
+      lastMessage: {
+        senderName: "Alice",
+        content: "Hey! Are we still on for tonight?",
+        createdAt: "2025-06-22T18:45:002",
+      }
+    },
+    {
+      name: "Project Team",
+      type: "group",
+      lastMessage: {
+        senderName: "Sarah",
+        content: "Meeting rescheduled to 3pm tomorrow.",
+        createdAt: "2025-06-22T14:10:002",
+      }
+    },
+    {
+      name: "Bob",
+      type: "direct",
+      lastMessage: {
+        senderName: "Bob",
+        content: "Can you send the files?",
+        createdAt: "2025-06-23T09:30:002",
+      }
+    },
+    {
+      name: "Family Group",
+      type: "group",
+      lastMessage: {
+        senderName: "Mom",
+        content: "Happy Birthday!",
+        createdAt: "2025-06-20T07:50:002",
+      }
+    },
+    {
+      name: "Charlie",
+      type: "direct",
+      lastMessage: {
+        senderName: "Charlie",
+        content: "Thanks",
+        createdAt: "2025-06-20T17:45:002",
+      }
+    }
+  ]
+
+  let directConversations = conversations
+  .filter((item: any)=> item.type == "direct")
+  .sort((a: any, b: any)=> {
+    const aDate = a?.lastMessage?.createdAt || a.CreatedAt;
+    const bDate = b?.lastMessage?.createdAt || b.CreatedAt;
+    return new Date(bDate).getTime() - new Date(aDate).getTime()
+  })
+
+  let groupConversations = conversations
+  .filter((item: any)=> item.type == "group")
+  .sort((a: any, b: any)=> {
+    const aDate = a?.lastMessage?.createdAt || a.CreatedAt;
+    const bDate = b?.lastMessage?.createdAt || b.CreatedAt;
+    return new Date(bDate).getTime() - new Date(aDate).getTime()
+  })
+
+ 
   
   return (
    
@@ -61,9 +129,87 @@ const Home = () => {
         </View>
 
         <View style={styles.content}>
+          <ScrollView showsVerticalScrollIndicator={false}
+            contentContainerStyle={{paddingVertical: spacingY._20}}>
+              <View style={styles.navBar}>
+                <View style={styles.tabs}>
+                  <TouchableOpacity
+                  onPress={()=> setSelectedTab(0)}
+                  style={[styles.tabStyle, 
+                  selectedTab == 0 && styles.activeTabStyle]}
+                  >
+                    <Typo>Direct Messages</Typo>
+                  </TouchableOpacity>
+                   <TouchableOpacity
+                  onPress={()=> setSelectedTab(1)}
+                  style={[styles.tabStyle, 
+                  selectedTab == 1 && styles.activeTabStyle]}
+                  >
+                    <Typo>Group</Typo>
+                  </TouchableOpacity>
+                </View>
+              </View>
 
+              <View style={styles.conversationList}>
+                  {
+                    selectedTab == 0 && directConversations.map((item: any, index)=>{
+                      return (
+                        <ConversationItem 
+                        item={item}
+                        key={index}
+                        router={router}
+                        showDivider={directConversations.length != index + 1}/>
+                      )
+                    })
+                  }
+                   {
+                    selectedTab == 1 && groupConversations.map((item: any, index)=>{
+                      return (
+                        <ConversationItem 
+                        item={item}
+                        key={index}
+                        router={router}
+                        showDivider={directConversations.length != index + 1}/>
+                      )
+                    })
+                  }
+              </View>
+
+                  {
+                    !loading && selectedTab == 0 && directConversations.length == 0 && (
+                      <Typo style={{textAlign: 'center'}}>
+                          You don&apos;t have any messagess
+                      </Typo>
+                    )
+                  }
+                  {
+                    !loading && selectedTab == 1 && groupConversations.length == 0 && (
+                      <Typo style={{textAlign: 'center'}}>
+                          You haven&apos;t joined any groups yet
+                      </Typo>
+                    )
+                  }
+
+              {
+                loading && <Loading />
+              }
+          </ScrollView>
         </View>
       </View>
+      
+      <Button 
+      style={styles.floatingButton}
+      onPress={()=> router.push({
+        pathname: "/(main)/newConersationModal",
+        params: {isGroup: selectedTab}
+      })}>
+
+        <Icons.Plus
+        color={colors.black}
+        weight='bold'
+        size={verticalScale(24)}
+        />
+      </Button>
     </ScreenWrapper>
   )
 }
@@ -122,7 +268,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.neutral700,
     borderRadius: radius.full
   },
-  floattingButton: {
+  floatingButton: {
     height: verticalScale(50),
     width: verticalScale(50),
     borderRadius: 100,
