@@ -25,6 +25,19 @@ type TestSocketPayload = {
   msg: string;
 };
 
+export type ContactType = {
+  id: string;
+  name: string;
+  avatar: string | null;
+  email?: string;
+};
+
+export type GetContactsResponse = {
+  success: boolean;
+  msg?: string;
+  data?: ContactType[];
+};
+
 export const testSocket = (
   payload: TestSocketPayload | ((data: TestSocketPayload) => void),
   off: boolean = false
@@ -66,5 +79,27 @@ export const updateProfile = (
     socket.on("updateProfile", payload);
   } else {
     socket.emit("updateProfile", payload);
+  }
+};
+
+export const getContacts = (
+  payload?: ((data: GetContactsResponse) => void),
+  off: boolean = false
+) => {
+  const socket = getSocket();
+
+  if (!socket) {
+    console.log("Socket is not connected");
+    return;
+  }
+
+  if (off) {
+    if (typeof payload === "function") {
+      socket.off("getContacts", payload);
+    }
+  } else if (typeof payload === "function") {
+    socket.on("getContacts", payload);
+  } else {
+    socket.emit("getContacts");
   }
 };

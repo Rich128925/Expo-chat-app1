@@ -16,6 +16,7 @@ type CustomButtonProps = {
   onPress?: () => void;
   style?: StyleProp<ViewStyle>;
   loading?: boolean;
+  disabled?: boolean;
 };
 
 const Button = ({
