@@ -5,7 +5,7 @@ import Typo from '@/components/Typo'
 import { colors, radius, spacingX, spacingY } from '@/constants/theme'
 import { useAuth } from '@/contexts/authContext'
 import Button from '@/components/Button'
-import { testSocket } from '@/socket/socketEvents'
+import { getConversations, GetConversationsResponse, onRefreshConversations, onConversationDeleted, ConversationDeletedResponse } from '@/socket/socketEvents'
 import { verticalScale } from '@/utils/styling'
 import * as Icons from 'phosphor-react-native'
 import { useRouter } from 'expo-router'
@@ -17,85 +17,77 @@ const Home = () => {
   const router = useRouter();
   const [selectedTab, setSelectedTab] = useState(0)
   const [loading, setLoading] = useState(false)
-  // useEffect(()=>{
-  //   testSocket(testSocketCallbackHandler)
-  //   testSocket({msg: "It's working!!!"})
+  const [conversations, setConversations] = useState<any[]>([])
 
-  //   return()=>{
-  //     testSocket(testSocketCallbackHandler, true)
-  //   }
-  // }, [])
+  const fetchConversations = React.useCallback(() => {
+    setLoading(true)
+    getConversations()
+  }, [])
 
-  // const testSocketCallbackHandler = (data: any )=> {
-  //   console.log('got response from testSocket event:', data);
+  useEffect(() => {
+    fetchConversations()
+
+    const handleGetConversations = (res: GetConversationsResponse) => {
+      setLoading(false)
+      if (res.success && res.data) {
+        setConversations(res.data)
+      }
+    }
     
-  // }
+    getConversations(handleGetConversations)
+    
+    let offRefresh = false;
+    const handleRefresh = () => {
+      if (!offRefresh) fetchConversations();
+    };
+    onRefreshConversations(handleRefresh)
+
+    const handleConversationDeleted = (res: ConversationDeletedResponse) => {
+       setConversations(prev => prev.filter(c => (c._id !== res.conversationId) && (c.id !== res.conversationId)))
+    }
+    onConversationDeleted(handleConversationDeleted)
+
+    return () => {
+      offRefresh = true;
+      getConversations(handleGetConversations, true)
+      onRefreshConversations(handleRefresh, true)
+      onConversationDeleted(handleConversationDeleted, true)
+    }
+  }, [fetchConversations])
 
   const handleLogout = async () => {
     await signOut();
   }
 
-  const conversations =[
-    {
-      name: "Alice",
-      type: "direct",
-      lastMessage: {
-        senderName: "Alice",
-        content: "Hey! Are we still on for tonight?",
-        createdAt: "2025-06-22T18:45:002",
-      }
-    },
-    {
-      name: "Project Team",
-      type: "group",
-      lastMessage: {
-        senderName: "Sarah",
-        content: "Meeting rescheduled to 3pm tomorrow.",
-        createdAt: "2025-06-22T14:10:002",
-      }
-    },
-    {
-      name: "Bob",
-      type: "direct",
-      lastMessage: {
-        senderName: "Bob",
-        content: "Can you send the files?",
-        createdAt: "2025-06-23T09:30:002",
-      }
-    },
-    {
-      name: "Family Group",
-      type: "group",
-      lastMessage: {
-        senderName: "Mom",
-        content: "Happy Birthday!",
-        createdAt: "2025-06-20T07:50:002",
-      }
-    },
-    {
-      name: "Charlie",
-      type: "direct",
-      lastMessage: {
-        senderName: "Charlie",
-        content: "Thanks",
-        createdAt: "2025-06-20T17:45:002",
+  const currentUserId = user?.id || (user as any)?._id;
+
+  const formattedConversations = conversations.map(conv => {
+    if (conv.type === 'direct' && conv.participants) {
+      const otherParticipant = conv.participants.find((p: any) => p._id !== currentUserId && p.id !== currentUserId);
+      if (otherParticipant) {
+        return {
+          ...conv,
+          name: otherParticipant.name,
+          avatar: otherParticipant.avatar
+        }
       }
     }
-  ]
+    return conv;
+  });
 
-  let directConversations = conversations
+  let directConversations = formattedConversations
   .filter((item: any)=> item.type == "direct")
   .sort((a: any, b: any)=> {
-    const aDate = a?.lastMessage?.createdAt || a.CreatedAt;
-    const bDate = b?.lastMessage?.createdAt || b.CreatedAt;
+    const aDate = a?.lastMessage?.createdAt || a.updatedAt || a.createdAt;
+    const bDate = b?.lastMessage?.createdAt || b.updatedAt || b.createdAt;
     return new Date(bDate).getTime() - new Date(aDate).getTime()
   })
 
-  let groupConversations = conversations
+  let groupConversations = formattedConversations
   .filter((item: any)=> item.type == "group")
   .sort((a: any, b: any)=> {
-    const aDate = a?.lastMessage?.createdAt || a.CreatedAt;
-    const bDate = b?.lastMessage?.createdAt || b.CreatedAt;
+    const aDate = a?.lastMessage?.createdAt || a.updatedAt || a.createdAt;
+    const bDate = b?.lastMessage?.createdAt || b.updatedAt || b.createdAt;
     return new Date(bDate).getTime() - new Date(aDate).getTime()
   })
 

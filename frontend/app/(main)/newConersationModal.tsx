@@ -19,6 +19,8 @@ import {
   onNewConversation,
   emitNewConversation,
   NewConversationResponse,
+  addContact,
+  AddContactResponse
 } from '@/socket/socketEvents'
 
 type ContactType = {
@@ -40,6 +42,10 @@ const NewConversationModal = () => {
   const [selectedParticipants, setSelectedParticipants] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isFetchingContacts, setIsFetchingContacts] = useState(true)
+
+  const [contactName, setContactName] = useState('')
+  const [contactEmail, setContactEmail] = useState('')
+  const [contactAvatar, setContactAvatar] = useState<string | null>(null)
 
   // Process contacts response
   const processGetContacts = useCallback((res: GetContactsResponse) => {
@@ -87,18 +93,33 @@ const NewConversationModal = () => {
   }, [router, isGroupMode])
 
   useEffect(() => {
-    // Get contacts when component mounts (only once)
-    getContacts(processGetContacts)
-    
-    // Listen for conversation creation response
+    // Get contacts when component mounts
+    getContacts() // emit
+    getContacts(processGetContacts) // listen
     onNewConversation(processNewConversation)
+
+    const processAddContact = (res: AddContactResponse) => {
+      if (res?.success && res.data) {
+        // Start a direct message with the created user
+        emitNewConversation({
+          type: 'direct',
+          participants: [String(currentUser?.id), String(res.data.id)],
+        })
+      } else {
+        setIsLoading(false)
+        Alert.alert('Error', res?.msg || 'Failed to manually add contact')
+      }
+    }
+    
+    addContact(processAddContact)
 
     // Cleanup on unmount
     return () => {
       getContacts(processGetContacts, true)
       onNewConversation(processNewConversation, true)
+      addContact(processAddContact, true)
     }
-  }, [processGetContacts, processNewConversation]) // Added dependencies
+  }, [processGetContacts, processNewConversation, currentUser?.id])
 
   const onSelectUser = (user: ContactType) => {
     if (!currentUser?.id) {
@@ -164,6 +185,25 @@ const NewConversationModal = () => {
     })
   }
 
+  const addManualContact = () => {
+    if (!contactName.trim() || !contactEmail.trim()) {
+      Alert.alert('Validation', 'Please enter a name and email')
+      return
+    }
+
+    if (!currentUser?.id) {
+      Alert.alert('Validation', 'Please login first')
+      return
+    }
+
+    setIsLoading(true)
+    addContact({
+      name: contactName.trim(),
+      email: contactEmail.trim(),
+      avatar: contactAvatar
+    })
+  }
+
   const onPickImage = async () => {
     try {
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
@@ -174,14 +214,18 @@ const NewConversationModal = () => {
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        aspect: [1, 1], // Square for group avatar
+        mediaTypes: ['images'],
+        aspect: [1, 1],
         quality: 0.5,
         allowsEditing: true,
       })
 
       if (!result.canceled && result.assets?.length > 0) {
-        setGroupAvatar(result.assets[0].uri)
+        if (isGroupMode) {
+          setGroupAvatar(result.assets[0].uri)
+        } else {
+          setContactAvatar(result.assets[0].uri)
+        }
       }
     } catch (error) {
       console.log('Image picker error:', error)
@@ -193,11 +237,11 @@ const NewConversationModal = () => {
     <ScreenWrapper isModal={true}>
       <View style={styles.container}>
         <Header
-          title={isGroupMode ? 'New Group' : 'Select User'}
+          title={isGroupMode ? 'New Group' : 'New Message'}
           leftIcon={<BackButton color={colors.black} />}
         />
 
-        {isGroupMode && (
+        {isGroupMode ? (
           <View style={styles.groupInfoContainer}>
             <TouchableOpacity onPress={onPickImage} style={styles.avatarContainer}>
               <Avatar uri={groupAvatar} size={100} isGroup={true} />
@@ -220,11 +264,51 @@ const NewConversationModal = () => {
               </Typo>
             )}
           </View>
+        ) : (
+          <View style={styles.groupInfoContainer}>
+             <TouchableOpacity onPress={onPickImage} style={styles.avatarContainer}>
+              <Avatar uri={contactAvatar} size={100} isGroup={false} />
+              <View style={styles.cameraIcon}>
+                <Typo size={20}>📷</Typo>
+              </View>
+            </TouchableOpacity>
+
+            <View style={styles.groupNameContainer}>
+              <Input
+                placeholder="Contact Name"
+                value={contactName}
+                onChangeText={setContactName}
+              />
+            </View>
+            <View style={[styles.groupNameContainer, { marginTop: 10 }]}>
+              <Input
+                placeholder="Contact Email"
+                value={contactEmail}
+                onChangeText={setContactEmail}
+                keyboardType="email-address"
+              />
+            </View>
+            
+            <View style={{ width: '100%', marginTop: 15 }}>
+              <Button
+                onPress={addManualContact}
+                disabled={!contactName.trim() || !contactEmail.trim() || isLoading}
+                loading={isLoading}
+              >
+                <Typo fontWeight={'bold'} size={17}>
+                  Add & Message
+                </Typo>
+              </Button>
+            </View>
+
+            <View style={{ width: '100%', height: 1, backgroundColor: colors.neutral200, marginVertical: 15 }} />
+            <Typo size={16} fontWeight={'600'} color={colors.neutral600} style={{ alignSelf: 'flex-start', paddingLeft: 5 }}>Or select existing contact</Typo>
+          </View>
         )}
 
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.contactList}
+          contentContainerStyle={[styles.contactList, !isGroupMode && { paddingTop: 0 }]}
         >
           {isFetchingContacts ? (
             <View style={styles.emptyState}>

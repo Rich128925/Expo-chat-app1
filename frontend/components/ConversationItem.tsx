@@ -1,13 +1,21 @@
-import { StyleSheet, TouchableOpacity, View } from 'react-native'
+import { StyleSheet, TouchableOpacity, View, Alert } from 'react-native'
 import React from 'react'
 import { colors, spacingX, spacingY } from '@/constants/theme'
 import Avatar from './Avatar'
 import Typo from './Typo'
 import moment from 'moment'
+import { deleteConversation } from '@/socket/socketEvents'
 
 const ConversationItem = ({ item, showDivider, router }: any) => {
   const openConversation = () => {
-    // router.push(...) here later
+    router.push({
+      pathname: '/(main)/chat',
+      params: {
+        conversationId: item?._id || item?.id,
+        name: item?.name, // It will be formatted in Home
+        isGroup: item?.type === 'group' ? '1' : '0'
+      }
+    })
   }
 
   const lastMessage: any = item?.lastMessage
@@ -48,6 +56,14 @@ const ConversationItem = ({ item, showDivider, router }: any) => {
       <TouchableOpacity
         style={styles.conversationItem}
         onPress={openConversation}
+        onLongPress={() => {
+           Alert.alert("Delete Chat", "Are you sure you want to completely delete this chat?", [
+              { text: "Cancel", style: "cancel" },
+              { text: "Delete", style: "destructive", onPress: () => {
+                 deleteConversation({ conversationId: item?._id || item?.id })
+              }}
+           ])
+        }}
       >
         <View>
           <Avatar

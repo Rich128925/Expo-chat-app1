@@ -145,3 +145,155 @@ export const emitNewConversation = (payload: NewConversationPayload) => {
 
   socket.emit("newConversation", payload);
 };
+
+export type GetConversationsResponse = {
+  success: boolean;
+  msg?: string;
+  data?: any[];
+};
+
+export type GetMessagesPayload = {
+  conversationId: string;
+};
+
+export type GetMessagesResponse = {
+  success: boolean;
+  msg?: string;
+  data?: any[];
+};
+
+export type SendMessagePayload = {
+  conversationId: string;
+  content?: string;
+  attachment?: string;
+};
+
+export type SendMessageResponse = {
+  success: boolean;
+  msg?: string;
+  data?: any;
+};
+
+export const getConversations = (
+  payload?: (data: GetConversationsResponse) => void,
+  off: boolean = false
+) => {
+  const socket = getSocket();
+  if (!socket) return;
+  if (off) {
+    if (typeof payload === "function") socket.off("getConversations", payload);
+  } else if (typeof payload === "function") {
+    socket.on("getConversations", payload);
+  } else {
+    socket.emit("getConversations");
+  }
+};
+
+export const getMessages = (
+  payload: GetMessagesPayload | ((data: GetMessagesResponse) => void),
+  off: boolean = false
+) => {
+  const socket = getSocket();
+  if (!socket) return;
+  if (off) {
+    if (typeof payload === "function") socket.off("getMessages", payload);
+  } else if (typeof payload === "function") {
+    socket.on("getMessages", payload);
+  } else {
+    socket.emit("getMessages", payload);
+  }
+};
+
+export const sendMessage = (payload: SendMessagePayload) => {
+  const socket = getSocket();
+  if (!socket) return;
+  socket.emit("sendMessage", payload);
+};
+
+export const onNewMessage = (
+  callback: (data: SendMessageResponse) => void,
+  off: boolean = false
+) => {
+  const socket = getSocket();
+  if (!socket) return;
+  if (off) socket.off("newMessage", callback);
+  else socket.on("newMessage", callback);
+};
+
+export const onRefreshConversations = (
+  callback: () => void,
+  off: boolean = false
+) => {
+  const socket = getSocket();
+  if (!socket) return;
+  if (off) socket.off("refreshConversations", callback);
+  else socket.on("refreshConversations", callback);
+};
+
+export type AddContactPayload = {
+  name: string;
+  email: string;
+  avatar: string | null;
+};
+
+export type AddContactResponse = {
+  success: boolean;
+  msg?: string;
+  data?: ContactType;
+};
+
+export const addContact = (
+  payload: AddContactPayload | ((data: AddContactResponse) => void),
+  off: boolean = false
+) => {
+  const socket = getSocket();
+  if (!socket) return;
+  if (off) {
+    if (typeof payload === "function") socket.off("addContact", payload);
+  } else if (typeof payload === "function") {
+    socket.on("addContact", payload);
+  } else {
+    socket.emit("addContact", payload);
+  }
+};
+
+export interface MessageDeletedResponse {
+   messageId: string;
+   conversationId: string;
+}
+
+export interface ConversationDeletedResponse {
+   conversationId: string;
+}
+
+export const deleteMessage = (data: { messageId: string, conversationId: string }) => {
+  const socket = getSocket();
+  if (!socket) return;
+  socket.emit("deleteMessage", data);
+}
+
+export const deleteConversation = (data: { conversationId: string }) => {
+  const socket = getSocket();
+  if (!socket) return;
+  socket.emit("deleteConversation", data);
+}
+
+export const onMessageDeleted = (
+  callback: (data: MessageDeletedResponse) => void,
+  off: boolean = false
+) => {
+  const socket = getSocket();
+  if (!socket) return;
+  if (off) socket.off("messageDeleted", callback);
+  else socket.on("messageDeleted", callback);
+}
+
+export const onConversationDeleted = (
+  callback: (data: ConversationDeletedResponse) => void,
+  off: boolean = false
+) => {
+  const socket = getSocket();
+  if (!socket) return;
+  if (off) socket.off("conversationDeleted", callback);
+  else socket.on("conversationDeleted", callback);
+}

@@ -13,7 +13,11 @@ const messageSchema = new mongoose.Schema(
       required: true,
     },
     content: String,
-    attachment: String
+    attachment: String,
+    isDeleted: {
+      type: Boolean,
+      default: false
+    }
   },
   {
     timestamps: true

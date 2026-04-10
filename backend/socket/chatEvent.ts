@@ -1,6 +1,7 @@
 // socket/chatEvent.ts
 import { Server as SocketIOServer, Socket } from "socket.io";
 import Conversation from "../modals/Coversation"; // Fixed: models not modals, Conversation not Coversation
+import Message from "../modals/Message";
 import mongoose from "mongoose";
 
 export function registerChatEvents(io: SocketIOServer, socket: Socket) {
@@ -134,4 +135,174 @@ export function registerChatEvents(io: SocketIOServer, socket: Socket) {
 
   // Listen for the event that frontend sends
   socket.on("newConversation", handleNewConversation);
+
+  socket.on("getConversations", async () => {
+    try {
+      const conversations = await Conversation.find({
+        participants: socket.data.userId,
+      })
+        .populate({
+          path: "participants",
+          select: "name avatar email",
+        })
+        .populate({
+          path: "lastMessage",
+          populate: {
+            path: "senderId",
+            select: "name avatar",
+          },
+        })
+        .sort({ updatedAt: -1 })
+        .lean();
+
+      socket.emit("getConversations", {
+        success: true,
+        data: conversations,
+      });
+    } catch (error: any) {
+      console.log("Get conversations error:", error);
+      socket.emit("getConversations", {
+        success: false,
+        msg: "Failed to fetch conversations",
+      });
+    }
+  });
+
+  socket.on("getMessages", async (data: any) => {
+    try {
+      const { conversationId } = data;
+      if (!conversationId) {
+        return socket.emit("getMessages", {
+          success: false,
+          msg: "conversationId required",
+        });
+      }
+
+      const messages = await Message.find({ conversationId })
+        .populate({
+          path: "senderId",
+          select: "name avatar email",
+        })
+        .sort({ createdAt: 1 })
+        .lean();
+
+      socket.emit("getMessages", {
+        success: true,
+        data: messages,
+      });
+    } catch (error: any) {
+      console.log("Get messages error:", error);
+      socket.emit("getMessages", {
+        success: false,
+        msg: "Failed to fetch messages",
+      });
+    }
+  });
+
+  socket.on("sendMessage", async (data: any) => {
+    try {
+      const { conversationId, content, attachment } = data;
+
+      if (!conversationId || (!content && !attachment)) {
+        return socket.emit("newMessage", {
+          success: false,
+          msg: "Invalid message format",
+        });
+      }
+
+      const conversation = await Conversation.findById(conversationId);
+      if (!conversation) {
+        return socket.emit("newMessage", {
+          success: false,
+          msg: "Conversation not found",
+        });
+      }
+
+      const newMessage = await Message.create({
+        conversationId,
+        senderId: socket.data.userId,
+        content: content || "",
+        attachment: attachment || "",
+      });
+
+      conversation.lastMessage = newMessage._id;
+      conversation.updatedAt = new Date();
+      await conversation.save();
+
+      const populatedMessage = await Message.findById(newMessage._id)
+        .populate({
+          path: "senderId",
+          select: "name avatar email",
+        })
+        .lean();
+
+      // Emit to the conversation room
+      io.to(conversationId.toString()).emit("newMessage", {
+        success: true,
+        data: populatedMessage,
+      });
+      
+      // We also emit a conversations refresh token for participants so they know lastMessage changed
+      io.to(conversationId.toString()).emit("refreshConversations");
+      
+    } catch (error: any) {
+      console.log("Send message error:", error);
+      socket.emit("newMessage", {
+        success: false,
+        msg: "Failed to send message",
+      });
+    }
+  });
+
+  socket.on("deleteMessage", async (data: any) => {
+    try {
+      const { messageId, conversationId } = data;
+      if (!messageId || !conversationId) return;
+
+      const message = await Message.findById(messageId);
+      
+      if (!message || message.senderId.toString() !== socket.data.userId.toString()) {
+         return; // Only sender can delete for everyone
+      }
+
+      message.content = "";
+      message.attachment = "";
+      message.isDeleted = true;
+      await message.save();
+
+      io.to(conversationId.toString()).emit("messageDeleted", {
+        messageId,
+        conversationId
+      });
+      
+      io.to(conversationId.toString()).emit("refreshConversations");
+
+    } catch (error) {
+      console.log("Delete message error:", error);
+    }
+  });
+
+  socket.on("deleteConversation", async (data: any) => {
+    try {
+      const { conversationId } = data;
+      if (!conversationId) return;
+
+      const conversation = await Conversation.findById(conversationId);
+      if (!conversation || !conversation.participants.includes(socket.data.userId)) {
+         return; 
+      }
+
+      await Message.deleteMany({ conversationId });
+      await Conversation.findByIdAndDelete(conversationId);
+
+      io.to(conversationId.toString()).emit("conversationDeleted", {
+        conversationId
+      });
+      
+      io.to(conversationId.toString()).emit("refreshConversations");
+
+    } catch (error) {
+       console.log("Delete conv error:", error);
+    }
+  });
 }

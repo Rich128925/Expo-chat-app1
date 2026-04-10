@@ -116,4 +116,40 @@ export function registerUserEvents(io: SocketIOServer, socket: Socket) {
       });
     }
   });
+
+  socket.on("addContact", async (data: { name: string, email: string, avatar: string }) => {
+    try {
+      const currentUserId = socket.data.userId;
+      if (!currentUserId) {
+        return socket.emit("addContact", { success: false, msg: "Unauthorized" });
+      }
+      
+      if (!data.email || !data.name) {
+        return socket.emit("addContact", { success: false, msg: "Name and Email are required" });
+      }
+      
+      let user = await User.findOne({ email: data.email.toLowerCase() });
+      if (!user) {
+        user = await User.create({
+          name: data.name,
+          email: data.email.toLowerCase(),
+          password: "dummy_password_xyz",
+          avatar: data.avatar || ""
+        });
+      }
+      
+      socket.emit("addContact", {
+        success: true,
+        data: {
+          id: user._id.toString(),
+          name: user.name,
+          email: user.email,
+          avatar: user.avatar || ""
+        }
+      });
+    } catch (error: any) {
+      console.log("addContact error:", error);
+      socket.emit("addContact", { success: false, msg: "Failed to add contact" });
+    }
+  });
 }

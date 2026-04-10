@@ -3,7 +3,7 @@ import { ResponseProps } from "@/types";
 import axios from "axios";
 
 
-const CLOUDINARY_API_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`
+const CLOUDINARY_API_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`
 
 
 export const uploadFileToCloudinary = async (
@@ -21,10 +21,11 @@ export const uploadFileToCloudinary = async (
       if (file && file.uri) {
         // ready to upload
         const formData = new FormData();
+        const isVideo = file?.uri?.toLowerCase().endsWith('mp4') || file?.uri?.toLowerCase().endsWith('mov');
         formData.append("file",{
           uri:file?.uri,
-          type: "image/jpeg",
-          name: file?.uri?.split('/').pop() || 'file.jpeg'
+          type: isVideo ? "video/mp4" : "image/jpeg",
+          name: file?.uri?.split('/').pop() || (isVideo ? 'video.mp4' : 'file.jpeg')
         } as any );
 
 
