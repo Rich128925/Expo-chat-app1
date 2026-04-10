@@ -1,4 +1,3 @@
-// contexts/authContext.tsx
 import { AuthContextProps, DecodedTokenProps, UserProps } from "@/types";
 import { useRouter } from "expo-router";
 import { createContext, ReactNode, useContext, useState, useEffect } from "react";

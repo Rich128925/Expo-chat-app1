@@ -1,71 +1,84 @@
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { StyleSheet, TouchableOpacity, View } from 'react-native'
 import React from 'react'
 import { colors, spacingX, spacingY } from '@/constants/theme'
 import Avatar from './Avatar'
 import Typo from './Typo'
 import moment from 'moment'
 
-const ConversationItem = ({item, showDivider, router}: any) => {
-  const openConversation = () => {}
-  const lastMessage: any = item.lastMessage;
-  const isDirect = item.type == 'direct'
-  const getLastMessageContent = () => {
-    if(!lastMessage) return "Say hi 👋"
+const ConversationItem = ({ item, showDivider, router }: any) => {
+  const openConversation = () => {
+    // router.push(...) here later
+  }
 
-    return lastMessage?.attachement ? "Image" : lastMessage.content;
+  const lastMessage: any = item?.lastMessage
+  const isDirect = item?.type === 'direct'
+
+  const getLastMessageContent = () => {
+    if (!lastMessage) return 'Say hi 👋'
+    return lastMessage?.attachment ? 'Image' : lastMessage?.content || 'Say hi 👋'
   }
 
   const getLastMessageDate = () => {
-    if (!lastMessage?.createdAt) return null;
+    const rawDate =
+      lastMessage?.createdAt ||
+      item?.updatedAt ||
+      item?.createdAt
 
-    const messageDate = moment(lastMessage.createdAt)
+    if (!rawDate) return ''
 
-    const today = moment();
+    const messageDate = moment(rawDate)
 
-    if (messageDate.isSame(today, "day")) {
-      return messageDate.format("h:mm A");
+    if (!messageDate.isValid()) return ''
+
+    const today = moment()
+
+    if (messageDate.isSame(today, 'day')) {
+      return messageDate.format('h:mm A')
     }
-    if (messageDate.isSame(today, "year")) {
-      return messageDate.format("MMM D");
+
+    if (messageDate.isSame(today, 'year')) {
+      return messageDate.format('MMM D')
     }
-   
-      return messageDate.format("MMM D, YYYY");
-    
+
+    return messageDate.format('MMM D, YYYY')
   }
+
   return (
     <View>
-      <TouchableOpacity 
-      style={styles.conservationItem}
-      onPress={openConversation}
+      <TouchableOpacity
+        style={styles.conversationItem}
+        onPress={openConversation}
       >
         <View>
-          <Avatar uri={null} size={47} isGroup={item.type == "group"}/>
+          <Avatar
+            uri={item?.avatar || null}
+            size={47}
+            isGroup={item?.type === 'group'}
+          />
         </View>
 
-        <View style={{flex: 1}}>
+        <View style={{ flex: 1 }}>
           <View style={styles.row}>
-             <Typo size={17} fontWeight={"600"}>
-                {item?.name}
-             </Typo>
+            <Typo size={17} fontWeight={'600'}>
+              {item?.name || (isDirect ? 'Direct Chat' : 'Group Chat')}
+            </Typo>
 
-             {
-              item.lastMessage && (
-                <Typo size={15}>{getLastMessageDate()}</Typo>
-              )
-             }
+            {!!getLastMessageDate() && (
+              <Typo size={15}>{getLastMessageDate()}</Typo>
+            )}
           </View>
 
           <Typo
-          size={15}
-          color={colors.neutral600}
-          textProps={{numberOfLines: 1}}
+            size={15}
+            color={colors.neutral600}
+            textProps={{ numberOfLines: 1 }}
           >
             {getLastMessageContent()}
           </Typo>
         </View>
       </TouchableOpacity>
 
-      {showDivider && <View style={styles.divider}/>}
+      {showDivider && <View style={styles.divider} />}
     </View>
   )
 }
@@ -73,21 +86,21 @@ const ConversationItem = ({item, showDivider, router}: any) => {
 export default ConversationItem
 
 const styles = StyleSheet.create({
-  conservationItem: {
+  conversationItem: {
     gap: spacingX._10,
     marginVertical: spacingY._12,
     flexDirection: 'row',
-    alignItems: "center"
+    alignItems: 'center',
   },
   row: {
     flexDirection: 'row',
-    alignItems: "center",
-    justifyContent: "space-between"
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   divider: {
     height: 1,
-    width: "95%",
-    alignSelf: "center",
-    backgroundColor: "rgba(0,0,0,0.07)"
-  }
+    width: '95%',
+    alignSelf: 'center',
+    backgroundColor: 'rgba(0,0,0,0.07)',
+  },
 })

@@ -38,6 +38,19 @@ export type GetContactsResponse = {
   data?: ContactType[];
 };
 
+export type NewConversationPayload = {
+  type: "direct" | "group";
+  participants: string[];
+  name?: string;
+  avatar?: string | null;
+};
+
+export type NewConversationResponse = {
+  success: boolean;
+  msg?: string;
+  data?: any;
+};
+
 export const testSocket = (
   payload: TestSocketPayload | ((data: TestSocketPayload) => void),
   off: boolean = false
@@ -83,7 +96,7 @@ export const updateProfile = (
 };
 
 export const getContacts = (
-  payload?: ((data: GetContactsResponse) => void),
+  payload?: (data: GetContactsResponse) => void,
   off: boolean = false
 ) => {
   const socket = getSocket();
@@ -102,4 +115,33 @@ export const getContacts = (
   } else {
     socket.emit("getContacts");
   }
+};
+
+export const onNewConversation = (
+  callback: (data: NewConversationResponse) => void,
+  off: boolean = false
+) => {
+  const socket = getSocket();
+
+  if (!socket) {
+    console.log("Socket is not connected");
+    return;
+  }
+
+  if (off) {
+    socket.off("newConversation", callback);
+  } else {
+    socket.on("newConversation", callback);
+  }
+};
+
+export const emitNewConversation = (payload: NewConversationPayload) => {
+  const socket = getSocket();
+
+  if (!socket) {
+    console.log("Socket is not connected");
+    return;
+  }
+
+  socket.emit("newConversation", payload);
 };
