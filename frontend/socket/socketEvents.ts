@@ -189,18 +189,20 @@ export const getConversations = (
   }
 };
 
-export const getMessages = (
-  payload: GetMessagesPayload | ((data: GetMessagesResponse) => void),
-  off: boolean = false
-) => {
+export const getMessages = (payload: any, off: boolean = false) => {
   const socket = getSocket();
-  if (!socket) return;
+  if (!socket) {
+    console.log("Socket is not connected");
+    return;
+  }
+
   if (off) {
-    if (typeof payload === "function") socket.off("getMessages", payload);
-  } else if (typeof payload === "function") {
-    socket.on("getMessages", payload);
+    // turn off listing to this event
+    socket.off("getMessages", payload); // payload is the callback
+  } else if (typeof payload == "function") {
+    socket.on("getMessages", payload); // payload as callback for this event
   } else {
-    socket.emit("getMessages", payload);
+    socket.emit("getMessages", payload); // sending payload as data
   }
 };
 

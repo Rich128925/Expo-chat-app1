@@ -11,8 +11,12 @@ const ConversationItem = ({ item, showDivider, router }: any) => {
     router.push({
       pathname: '/(main)/chat',
       params: {
-        conversationId: item?._id || item?.id,
-        name: item?.name, // It will be formatted in Home
+        id: item._id,
+        conversationId: item._id || item.id,
+        name: item.name,
+        avatar: item.avatar,
+        type: item.type,
+        participants: JSON.stringify(item.participants),
         isGroup: item?.type === 'group' ? '1' : '0'
       }
     })

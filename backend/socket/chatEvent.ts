@@ -168,7 +168,8 @@ export function registerChatEvents(io: SocketIOServer, socket: Socket) {
     }
   });
 
-  socket.on("getMessages", async (data: any) => {
+  socket.on("getMessages", async (data: { conversationId: string }) => {
+    console.log("getMessages event: ", data);
     try {
       const { conversationId } = data;
       if (!conversationId) {
@@ -179,16 +180,26 @@ export function registerChatEvents(io: SocketIOServer, socket: Socket) {
       }
 
       const messages = await Message.find({ conversationId })
-        .populate({
+        .sort({ createdAt: -1 }) // newest first
+        .populate<{ senderId: { _id: string; name: string; avatar: string } }>({
           path: "senderId",
-          select: "name avatar email",
+          select: "name avatar",
         })
-        .sort({ createdAt: 1 })
         .lean();
+
+      const messagesWithSender = messages.map((message: any) => ({
+        ...message,
+        id: message._id,
+        sender: {
+          id: message.senderId._id,
+          name: message.senderId.name,
+          avatar: message.senderId.avatar,
+        },
+      }));
 
       socket.emit("getMessages", {
         success: true,
-        data: messages,
+        data: messagesWithSender,
       });
     } catch (error: any) {
       console.log("Get messages error:", error);
@@ -229,17 +240,27 @@ export function registerChatEvents(io: SocketIOServer, socket: Socket) {
       conversation.updatedAt = new Date();
       await conversation.save();
 
-      const populatedMessage = await Message.findById(newMessage._id)
-        .populate({
+      const populatedMessage: any = await Message.findById(newMessage._id)
+        .populate<{ senderId: { _id: string; name: string; avatar: string } }>({
           path: "senderId",
-          select: "name avatar email",
+          select: "name avatar",
         })
         .lean();
+
+      const messageWithSender = {
+        ...populatedMessage,
+        id: populatedMessage._id,
+        sender: {
+          id: populatedMessage.senderId._id,
+          name: populatedMessage.senderId.name,
+          avatar: populatedMessage.senderId.avatar,
+        },
+      };
 
       // Emit to the conversation room
       io.to(conversationId.toString()).emit("newMessage", {
         success: true,
-        data: populatedMessage,
+        data: messageWithSender,
       });
       
       // We also emit a conversations refresh token for participants so they know lastMessage changed
