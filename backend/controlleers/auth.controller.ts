@@ -11,8 +11,12 @@ const generateToken = (user: any) => {
         id: user._id,
         name: user.name,
         email: user.email,
-        avatar: user.avatar || ""
-      }
+        avatar: user.avatar || "",
+        username: user.username || "",
+        phone: user.phone || "",
+        address: user.address || "",
+        bio: user.bio || "",
+      },
     },
     process.env.JWT_SECRET || "secretkey123",
     { expiresIn: "7d" }
