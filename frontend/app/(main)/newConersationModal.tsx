@@ -110,7 +110,7 @@ const NewConversationModal = () => {
         Alert.alert('Error', res?.msg || 'Failed to manually add contact')
       }
     }
-    
+
     addContact(processAddContact)
 
     // Cleanup on unmount
@@ -257,7 +257,7 @@ const NewConversationModal = () => {
                 onChangeText={setGroupName}
               />
             </View>
-            
+
             {selectedParticipants.length > 0 && (
               <Typo size={12} color={colors.neutral500}>
                 Selected: {selectedParticipants.length} participants
@@ -266,7 +266,7 @@ const NewConversationModal = () => {
           </View>
         ) : (
           <View style={styles.groupInfoContainer}>
-             <TouchableOpacity onPress={onPickImage} style={styles.avatarContainer}>
+            <TouchableOpacity onPress={onPickImage} style={styles.avatarContainer}>
               <Avatar uri={contactAvatar} size={100} isGroup={false} />
               <View style={styles.cameraIcon}>
                 <Typo size={20}>📷</Typo>
@@ -288,7 +288,7 @@ const NewConversationModal = () => {
                 keyboardType="email-address"
               />
             </View>
-            
+
             <View style={{ width: '100%', marginTop: 15 }}>
               <Button
                 onPress={addManualContact}

@@ -27,13 +27,13 @@ const Login = () => {
     try {
       setIsLoading(true);
       console.log('Attempting login with:', emailRef.current);
-      
+
       // Call the signIn function from auth context
       await signIn(emailRef.current, passwordRef.current);
-      
+
       // If successful, navigation happens automatically in the auth context
       console.log('Login successful');
-      
+
     } catch (error: any) {
       console.error('Login error:', error.message);
       Alert.alert("Login Failed", error.message || "Invalid email or password");
@@ -50,7 +50,7 @@ const Login = () => {
       <ScreenWrapper showPattern={true}>
         <View style={styles.container}>
           <View style={styles.header}>
-            <BackButton iconSize={28}/>
+            <BackButton iconSize={28} />
             <Typo size={17} color={colors.white}>
               Forgot password
             </Typo>
@@ -61,7 +61,7 @@ const Login = () => {
               contentContainerStyle={styles.form}
               showsVerticalScrollIndicator={false}
             >
-              <View style={{gap: spacingY._10, marginBottom: spacingY._15}}>
+              <View style={{ gap: spacingY._10, marginBottom: spacingY._15 }}>
                 <Typo size={28} fontWeight={"600"}>
                   Welcome back
                 </Typo>
@@ -69,8 +69,8 @@ const Login = () => {
                   We are happy to see you!
                 </Typo>
               </View>
-              
-              <Input 
+
+              <Input
                 placeholder='Enter your email'
                 onChangeText={(value: string) => emailRef.current = value}
                 icon={
@@ -80,8 +80,8 @@ const Login = () => {
                   />
                 }
               />
-              
-              <Input 
+
+              <Input
                 placeholder='Enter your password'
                 secureTextEntry
                 onChangeText={(value: string) => passwordRef.current = value}
@@ -93,7 +93,7 @@ const Login = () => {
                 }
               />
 
-              <View style={{marginTop: spacingY._25, gap: spacingX._15}}>
+              <View style={{ marginTop: spacingY._25, gap: spacingX._15 }}>
                 <Button loading={isLoading} onPress={handleSubmit}>
                   <Typo fontWeight={"bold"} color={colors.black} size={20}>
                     Login

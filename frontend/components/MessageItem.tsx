@@ -7,12 +7,33 @@ import { colors, radius, spacingX, spacingY } from '@/constants/theme'
 import Avatar from './Avatar'
 import Typo from './Typo'
 
+const formatTime = (createdAt: string | Date | undefined) => {
+  if (!createdAt) return "";
+
+  if (typeof createdAt === "string" && (createdAt.includes("AM") || createdAt.includes("PM"))) {
+    return createdAt;
+  }
+
+  const date = new Date(createdAt);
+
+  if (isNaN(date.getTime())) return createdAt;
+
+  let hours = date.getHours();
+  const minutes = date.getMinutes();
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12;
+  hours = hours ? hours : 12;
+  const minutesStr = minutes < 10 ? '0' + minutes : minutes;
+
+  return `${hours}:${minutesStr} ${ampm}`;
+};
+
 const MessageItem = ({
   item, isDirect
 }: { item: MessageProps, isDirect: boolean }) => {
 
   const { user: currentUser } = useAuth()
-  const isMe = item.isMe;
+  const isMe = item.sender?.id === currentUser?.id || item.isMe;
 
   return (
     <View
@@ -22,9 +43,9 @@ const MessageItem = ({
       ]}
     >
       {
-        !isMe && isDirect && (
+        !isMe && !isDirect && (
           <Avatar
-            size={30} uri={null}
+            size={30} uri={item.sender?.avatar}
             style={styles.messageAvatar}
           />
         )
@@ -36,9 +57,9 @@ const MessageItem = ({
           isMe ? styles.myBubble : styles.theirBubble
         ]}>
         {
-          isMe && !isDirect && (
+          !isMe && !isDirect && (
             <Typo color={colors.neutral900} fontWeight={"600"} size={13}>
-              {item.sender.name}
+              {item.sender?.name}
             </Typo>
           )
         }
@@ -51,7 +72,7 @@ const MessageItem = ({
           fontWeight={"500"}
           color={colors.neutral600}
         >
-          {item.createdAt}
+          {formatTime(item.createdAt)}
         </Typo>
 
       </View>

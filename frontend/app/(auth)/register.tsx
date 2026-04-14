@@ -21,22 +21,22 @@ const Register = () => {
 
   const { signUp } = useAuth();
 
-  const handleSumbit = async()=> {
+  const handleSumbit = async () => {
     if (!emailRef.current || !passwordRef.current || !nameRef.current) {
       Alert.alert("Sign Up", "Please fill all the fields")
       return;
     }
 
-   try {
-    setIsLoading(true);
-    await signUp(emailRef.current, passwordRef.current, nameRef.current,"");
-    setIsLoading(false);
-   } catch (error: any) {
-    setIsLoading(false);
-    Alert.alert("Registration Error", error.message);
-   }finally {
-    setIsLoading(false);
-   }
+    try {
+      setIsLoading(true);
+      await signUp(emailRef.current, passwordRef.current, nameRef.current, "");
+      setIsLoading(false);
+    } catch (error: any) {
+      setIsLoading(false);
+      Alert.alert("Registration Error", error.message);
+    } finally {
+      setIsLoading(false);
+    }
   }
   return (
     <KeyboardAvoidingView
@@ -46,75 +46,75 @@ const Register = () => {
       <ScreenWrapper showPattern={true}>
         <View style={styles.container}>
           <View style={styles.header}>
-            <BackButton iconSize={28}/>
+            <BackButton iconSize={28} />
             <Typo size={17} color={colors.white}>
               Need some help?
-              </Typo>
+            </Typo>
           </View>
 
           <View style={styles.content}>
             {/* your form goes here */}
             <ScrollView
-            contentContainerStyle={styles.form}
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={{gap: spacingY._10, marginBottom: spacingY._15}}>
-            <Typo size={28} fontWeight={"600"}>
-              Getting Started
-            </Typo>
-              <Typo color={colors.neutral600}>
-              Created an account to continue
-            </Typo>
-            </View>
-
-            <Input 
-            placeholder='Enter your name'
-            onChangeText={(value: string)=> nameRef.current = value}
-              icon={
-                <Icons.User
-                size={verticalScale(26)}
-                color={colors.neutral600}
-                />
-              }
-            />
-            <Input 
-            placeholder='Enter your email'
-            onChangeText={(value: string)=> emailRef.current = value}
-              icon={
-                <Icons.At
-                size={verticalScale(26)}
-                color={colors.neutral600}
-                />
-              }
-            />
-            <Input 
-            placeholder='Enter your password'
-            secureTextEntry
-            onChangeText={(value: string)=> passwordRef.current = value}
-              icon={
-                <Icons.Lock
-                size={verticalScale(26)}
-                color={colors.neutral600}
-                />
-              }
-            />
-
-            <View style={{marginTop: spacingY._25, gap: spacingX._15}}>
-              <Button loading={isLoading} onPress={handleSumbit}>
-                <Typo fontWeight={"bold"} color={colors.black} size={20}>
-                  Sign Up
-                  </Typo>
-              </Button>
-
-              <View style={styles.footer}>
-              <Typo>Already have an account?</Typo>
-              <Pressable onPress={()=> router.push('/(auth)/login')}>
-                <Typo fontWeight={"bold"} color={colors.primaryDark}>
-                  Login
+              contentContainerStyle={styles.form}
+              showsVerticalScrollIndicator={false}
+            >
+              <View style={{ gap: spacingY._10, marginBottom: spacingY._15 }}>
+                <Typo size={28} fontWeight={"600"}>
+                  Getting Started
                 </Typo>
-              </Pressable>
+                <Typo color={colors.neutral600}>
+                  Created an account to continue
+                </Typo>
               </View>
-            </View>
+
+              <Input
+                placeholder='Enter your name'
+                onChangeText={(value: string) => nameRef.current = value}
+                icon={
+                  <Icons.User
+                    size={verticalScale(26)}
+                    color={colors.neutral600}
+                  />
+                }
+              />
+              <Input
+                placeholder='Enter your email'
+                onChangeText={(value: string) => emailRef.current = value}
+                icon={
+                  <Icons.At
+                    size={verticalScale(26)}
+                    color={colors.neutral600}
+                  />
+                }
+              />
+              <Input
+                placeholder='Enter your password'
+                secureTextEntry
+                onChangeText={(value: string) => passwordRef.current = value}
+                icon={
+                  <Icons.Lock
+                    size={verticalScale(26)}
+                    color={colors.neutral600}
+                  />
+                }
+              />
+
+              <View style={{ marginTop: spacingY._25, gap: spacingX._15 }}>
+                <Button loading={isLoading} onPress={handleSumbit}>
+                  <Typo fontWeight={"bold"} color={colors.black} size={20}>
+                    Sign Up
+                  </Typo>
+                </Button>
+
+                <View style={styles.footer}>
+                  <Typo>Already have an account?</Typo>
+                  <Pressable onPress={() => router.push('/(auth)/login')}>
+                    <Typo fontWeight={"bold"} color={colors.primaryDark}>
+                      Login
+                    </Typo>
+                  </Pressable>
+                </View>
+              </View>
             </ScrollView>
           </View>
         </View>
