@@ -10,7 +10,7 @@ dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
-const PORT: number = parseInt(process.env.PORT || "4000", 10); // Convert to number
+const PORT: number = parseInt(process.env.PORT || "4000", 10); 
 
 // middleware
 app.use(cors({
