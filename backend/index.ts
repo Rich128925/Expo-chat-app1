@@ -11,6 +11,7 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app);
 const PORT: number = parseInt(process.env.PORT || "3000", 10);
+const HOST: string = process.env.HOST || "0.0.0.0";
 
 // Middleware
 app.use(cors({
@@ -63,9 +64,9 @@ const startServer = async () => {
     await connectDB();
     console.log("✅ Database Connected");
 
-    server.listen(PORT, "0.0.0.0", () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-    });
+    server.listen(PORT, HOST, () => {
+  console.log(`🚀 Server running on ${HOST}:${PORT}`);
+});
 
     // Handle port-in-use and other listen errors
     server.on("error", (error: NodeJS.ErrnoException) => {

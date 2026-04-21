@@ -1,4 +1,5 @@
-export const API_URL = "http://10.152.165.192:3000";
+// frontend/constants/index.ts
+export const API_URL = "http://10.241.45.192:3000";
 
 export const CLOUDINARY_CLOUD_NAME = 'dxtdvnwvf';
 export const CLOUDINARY_UPLOAD_PRESET = 'images';
