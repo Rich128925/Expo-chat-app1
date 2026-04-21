@@ -163,9 +163,9 @@ const Chat = () => {
 
     const time = item?.createdAt
       ? new Date(item.createdAt).toLocaleTimeString([], {
-          hour: "numeric",
-          minute: "2-digit",
-        })
+        hour: "numeric",
+        minute: "2-digit",
+      })
       : "";
 
     const attachmentSource =
@@ -266,7 +266,7 @@ const Chat = () => {
               <TouchableOpacity style={styles.leftAvatarBtn}>
                 <Avatar
                   size={28}
-                  uri={ currentUser?.avatar || ""}
+                  uri={currentUser?.avatar || ""}   
                 />
               </TouchableOpacity>
 
