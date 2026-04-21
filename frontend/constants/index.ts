@@ -1,5 +1,5 @@
 // frontend/constants/index.ts
-export const API_URL = "http://10.241.45.192:3000";
+export const API_URL = "https://expo-chat-app2.onrender.com";
 
 export const CLOUDINARY_CLOUD_NAME = 'dxtdvnwvf';
 export const CLOUDINARY_UPLOAD_PRESET = 'images';
