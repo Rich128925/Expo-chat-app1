@@ -138,7 +138,7 @@ const Chat = () => {
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         aspect: [4, 3],
         quality: 0.6,
         allowsEditing: true,
