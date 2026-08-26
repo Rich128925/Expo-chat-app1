@@ -1,18 +1,27 @@
 import { Alert, StyleSheet, TouchableOpacity, View, ScrollView } from 'react-native'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { useLocalSearchParams, useRouter } from 'expo-router'
+import * as ImagePicker from 'expo-image-picker'
+
 import ScreenWrapper from '@/components/ScreenWrapper'
 import { colors, radius, spacingX, spacingY } from '@/constants/theme'
 import Header from '@/components/Header'
 import BackButton from '@/components/BackButton'
 import Avatar from '@/components/Avatar'
-import * as ImagePicker from 'expo-image-picker'
 import Input from '@/components/Input'
 import Typo from '@/components/Typo'
 import { useAuth } from '@/contexts/authContext'
 import Button from '@/components/Button'
 import { verticalScale } from '@/utils/styling'
-import { getContacts, GetContactsResponse } from '@/socket/socketEvents'
+import {
+  getContacts,
+  GetContactsResponse,
+  onNewConversation,
+  emitNewConversation,
+  NewConversationResponse,
+  addContact,
+  AddContactResponse
+} from '@/socket/socketEvents'
 
 type ContactType = {
   id: string
@@ -21,7 +30,7 @@ type ContactType = {
   email?: string
 }
 
-const NewConersationModal = () => {
+const NewConversationModal = () => {
   const { isGroup } = useLocalSearchParams<{ isGroup?: string }>()
   const isGroupMode = isGroup === '1'
   const router = useRouter()
@@ -32,48 +41,109 @@ const NewConersationModal = () => {
   const [groupName, setGroupName] = useState('')
   const [selectedParticipants, setSelectedParticipants] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [isFetchingContacts, setIsFetchingContacts] = useState(true)
 
-  useEffect(() => {
-    getContacts(processGetContacts)
-    getContacts()
+  const [contactName, setContactName] = useState('')
+  const [contactEmail, setContactEmail] = useState('')
+  const [contactAvatar, setContactAvatar] = useState<string | null>(null)
 
-    return () => {
-      getContacts(processGetContacts, true)
-    }
-  }, [])
+  // Process contacts response
+  const processGetContacts = useCallback((res: GetContactsResponse) => {
+    console.log('📞 Got contacts response:', res)
+    setIsFetchingContacts(false)
 
-  const processGetContacts = (res: GetContactsResponse) => {
-    console.log('got contacts:', res)
-
-    if (res?.success && res.data) {
+    if (res?.success && res.data && Array.isArray(res.data)) {
       const formattedContacts: ContactType[] = res.data.map((item: any) => ({
-        id: item.id || item._id,
-        name: item.name,
+        id: String(item.id || item._id || ''),
+        name: item.name || '',
         avatar: item.avatar || null,
         email: item.email,
       }))
 
       const filteredContacts = formattedContacts.filter(
-        (contact) => contact.id !== currentUser?.id
+        (contact) => contact.id && contact.id !== currentUser?.id
       )
 
+      console.log(`✅ Loaded ${filteredContacts.length} contacts`)
       setContacts(filteredContacts)
     } else {
+      console.log('⚠️ No contacts found or invalid response')
       setContacts([])
     }
-  }
+  }, [currentUser?.id])
+
+  // Process new conversation response
+  const processNewConversation = useCallback((res: NewConversationResponse) => {
+    console.log('💬 New conversation response:', res)
+    setIsLoading(false)
+
+    if (res?.success && res.data) {
+      // Navigate to chat screen
+      router.push({
+        pathname: "/(main)/chat",
+        params: {
+          conversationId: res.data._id || res.data.id,
+          name: res.data.name || '',
+          isGroup: isGroupMode ? '1' : '0'
+        }
+      })
+    } else {
+      Alert.alert('Error', res?.msg || 'Failed to create conversation')
+    }
+  }, [router, isGroupMode])
+
+  useEffect(() => {
+    // Get contacts when component mounts
+    getContacts() // emit
+    getContacts(processGetContacts) // listen
+    onNewConversation(processNewConversation)
+
+    const processAddContact = (res: AddContactResponse) => {
+      if (res?.success && res.data) {
+        // Start a direct message with the created user
+        emitNewConversation({
+          type: 'direct',
+          participants: [String(currentUser?.id), String(res.data.id)],
+        })
+      } else {
+        setIsLoading(false)
+        Alert.alert('Error', res?.msg || 'Failed to manually add contact')
+      }
+    }
+
+    addContact(processAddContact)
+
+    // Cleanup on unmount
+    return () => {
+      getContacts(processGetContacts, true)
+      onNewConversation(processNewConversation, true)
+      addContact(processAddContact, true)
+    }
+  }, [processGetContacts, processNewConversation, currentUser?.id])
 
   const onSelectUser = (user: ContactType) => {
-    if (!currentUser) {
+    if (!currentUser?.id) {
       Alert.alert('Authentication', 'Please login to start a conversation')
+      return
+    }
+
+    if (!user?.id) {
+      Alert.alert('Error', 'Invalid user selected')
       return
     }
 
     if (isGroupMode) {
       toggleParticipant(user)
-    } else {
-      Alert.alert('Info', `Start conversation with ${user.name}`)
+      return
     }
+
+    setIsLoading(true)
+    console.log('📤 Creating direct conversation with:', user.id)
+
+    emitNewConversation({
+      type: 'direct',
+      participants: [String(currentUser.id), String(user.id)],
+    })
   }
 
   const toggleParticipant = (user: ContactType) => {
@@ -85,41 +155,53 @@ const NewConersationModal = () => {
     })
   }
 
-  const createGroup = async () => {
+  const createGroup = () => {
     if (!groupName.trim()) {
-      Alert.alert('Validation', 'Enter group name')
+      Alert.alert('Validation', 'Please enter a group name')
       return
     }
 
-    if (!currentUser) {
+    if (!currentUser?.id) {
       Alert.alert('Validation', 'Please login first')
       return
     }
 
     if (selectedParticipants.length < 2) {
-      Alert.alert('Validation', 'Select at least 2 users')
+      Alert.alert('Validation', 'Please select at least 2 participants')
       return
     }
 
-    try {
-      setIsLoading(true)
+    setIsLoading(true)
+    console.log('👥 Creating group:', {
+      name: groupName.trim(),
+      participants: [String(currentUser.id), ...selectedParticipants.map(String)]
+    })
 
-      const payload = {
-        name: groupName.trim(),
-        avatar: groupAvatar,
-        participants: selectedParticipants,
-      }
+    emitNewConversation({
+      type: 'group',
+      name: groupName.trim(),
+      avatar: groupAvatar,
+      participants: [String(currentUser.id), ...selectedParticipants.map(String)],
+    })
+  }
 
-      console.log('Creating group:', payload)
-
-      Alert.alert('Success', 'Group created successfully')
-      router.back()
-    } catch (error) {
-      console.log('create group error:', error)
-      Alert.alert('Error', 'Something went wrong')
-    } finally {
-      setIsLoading(false)
+  const addManualContact = () => {
+    if (!contactName.trim() || !contactEmail.trim()) {
+      Alert.alert('Validation', 'Please enter a name and email')
+      return
     }
+
+    if (!currentUser?.id) {
+      Alert.alert('Validation', 'Please login first')
+      return
+    }
+
+    setIsLoading(true)
+    addContact({
+      name: contactName.trim(),
+      email: contactEmail.trim(),
+      avatar: contactAvatar
+    })
   }
 
   const onPickImage = async () => {
@@ -132,19 +214,21 @@ const NewConersationModal = () => {
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        aspect: [4, 3],
+        mediaTypes: ['images'],
+        aspect: [1, 1],
         quality: 0.5,
         allowsEditing: true,
       })
 
-      console.log('picked image:', result)
-
-      if (!result.canceled) {
-        setGroupAvatar(result.assets[0].uri)
+      if (!result.canceled && result.assets?.length > 0) {
+        if (isGroupMode) {
+          setGroupAvatar(result.assets[0].uri)
+        } else {
+          setContactAvatar(result.assets[0].uri)
+        }
       }
     } catch (error) {
-      console.log('image picker error:', error)
+      console.log('Image picker error:', error)
       Alert.alert('Error', 'Could not pick image')
     }
   }
@@ -153,14 +237,17 @@ const NewConersationModal = () => {
     <ScreenWrapper isModal={true}>
       <View style={styles.container}>
         <Header
-          title={isGroupMode ? 'New Group' : 'Select User'}
+          title={isGroupMode ? 'New Group' : 'New Message'}
           leftIcon={<BackButton color={colors.black} />}
         />
 
-        {isGroupMode && (
+        {isGroupMode ? (
           <View style={styles.groupInfoContainer}>
             <TouchableOpacity onPress={onPickImage} style={styles.avatarContainer}>
               <Avatar uri={groupAvatar} size={100} isGroup={true} />
+              <View style={styles.cameraIcon}>
+                <Typo size={20}>📷</Typo>
+              </View>
             </TouchableOpacity>
 
             <View style={styles.groupNameContainer}>
@@ -170,33 +257,99 @@ const NewConersationModal = () => {
                 onChangeText={setGroupName}
               />
             </View>
+
+            {selectedParticipants.length > 0 && (
+              <Typo size={12} color={colors.neutral500}>
+                Selected: {selectedParticipants.length} participants
+              </Typo>
+            )}
+          </View>
+        ) : (
+          <View style={styles.groupInfoContainer}>
+            <TouchableOpacity onPress={onPickImage} style={styles.avatarContainer}>
+              <Avatar uri={contactAvatar} size={100} isGroup={false} />
+              <View style={styles.cameraIcon}>
+                <Typo size={20}>📷</Typo>
+              </View>
+            </TouchableOpacity>
+
+            <View style={styles.groupNameContainer}>
+              <Input
+                placeholder="Contact Name"
+                value={contactName}
+                onChangeText={setContactName}
+              />
+            </View>
+            <View style={[styles.groupNameContainer, { marginTop: 10 }]}>
+              <Input
+                placeholder="Contact Email"
+                value={contactEmail}
+                onChangeText={setContactEmail}
+                keyboardType="email-address"
+              />
+            </View>
+
+            <View style={{ width: '100%', marginTop: 15 }}>
+              <Button
+                onPress={addManualContact}
+                disabled={!contactName.trim() || !contactEmail.trim() || isLoading}
+                loading={isLoading}
+              >
+                <Typo fontWeight={'bold'} size={17}>
+                  Add & Message
+                </Typo>
+              </Button>
+            </View>
+
+            <View style={{ width: '100%', height: 1, backgroundColor: colors.neutral200, marginVertical: 15 }} />
+            <Typo size={16} fontWeight={'600'} color={colors.neutral600} style={{ alignSelf: 'flex-start', paddingLeft: 5 }}>Or select existing contact</Typo>
           </View>
         )}
 
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.contactList}
+          contentContainerStyle={[styles.contactList, !isGroupMode && { paddingTop: 0 }]}
         >
-          {contacts.length === 0 ? (
+          {isFetchingContacts ? (
+            <View style={styles.emptyState}>
+              <Typo color={colors.neutral500}>Loading contacts...</Typo>
+            </View>
+          ) : contacts.length === 0 ? (
             <View style={styles.emptyState}>
               <Typo color={colors.neutral500}>No contacts found</Typo>
+              <Typo size={12} color={colors.neutral400} style={{ marginTop: 5 }}>
+                Other users will appear here when they register
+              </Typo>
             </View>
           ) : (
-            contacts.map((user: ContactType, index: number) => {
+            contacts.map((user) => {
               const isSelected = selectedParticipants.includes(user.id)
 
               return (
                 <TouchableOpacity
-                  key={user.id || index}
+                  key={user.id}
                   style={[styles.contactRow, isSelected && styles.selectedContact]}
                   onPress={() => onSelectUser(user)}
+                  disabled={isLoading}
                 >
                   <Avatar size={45} uri={user.avatar} />
-                  <Typo fontWeight={'500'}>{user.name}</Typo>
+
+                  <View style={styles.userInfo}>
+                    <Typo fontWeight={'500'}>{user.name}</Typo>
+                    {!!user.email && (
+                      <Typo size={12} color={colors.neutral500}>
+                        {user.email}
+                      </Typo>
+                    )}
+                  </View>
 
                   {isGroupMode && (
                     <View style={styles.selectionIndicator}>
-                      <View style={[styles.checkbox, isSelected && styles.checked]} />
+                      <View style={[styles.checkbox, isSelected && styles.checked]}>
+                        {isSelected && (
+                          <Typo size={12} color={colors.white}>✓</Typo>
+                        )}
+                      </View>
                     </View>
                   )}
                 </TouchableOpacity>
@@ -205,14 +358,16 @@ const NewConersationModal = () => {
           )}
         </ScrollView>
 
-        {isGroupMode && (
+        {isGroupMode && contacts.length > 0 && (
           <View style={styles.createGroupButton}>
             <Button
               onPress={createGroup}
               disabled={!groupName.trim() || selectedParticipants.length < 2 || isLoading}
               loading={isLoading}
             >
-              <Typo fontWeight={'bold'} size={17}>Create Group</Typo>
+              <Typo fontWeight={'bold'} size={17}>
+                Create Group ({selectedParticipants.length} participants)
+              </Typo>
             </Button>
           </View>
         )}
@@ -221,7 +376,7 @@ const NewConersationModal = () => {
   )
 }
 
-export default NewConersationModal
+export default NewConversationModal
 
 const styles = StyleSheet.create({
   container: {
@@ -232,9 +387,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: spacingY._10,
     gap: spacingY._10,
+    marginBottom: spacingY._20,
   },
   avatarContainer: {
     marginBottom: spacingY._5,
+    position: 'relative',
+  },
+  cameraIcon: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: colors.primary,
+    borderRadius: 20,
+    padding: 5,
   },
   groupNameContainer: {
     width: '100%',
@@ -243,29 +408,33 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacingX._10,
-    paddingVertical: spacingY._7,
+    paddingVertical: spacingY._12,
     paddingHorizontal: spacingX._10,
+    borderRadius: radius._10,
+  },
+  userInfo: {
+    flex: 1,
   },
   selectedContact: {
     backgroundColor: colors.neutral100,
-    borderRadius: radius._15,
   },
   contactList: {
-    gap: spacingY._12,
+    gap: spacingY._10,
     marginTop: spacingY._10,
     paddingTop: spacingY._10,
     paddingBottom: verticalScale(150),
   },
   selectionIndicator: {
     marginLeft: 'auto',
-    marginRight: spacingX._10,
   },
   checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     borderWidth: 2,
     borderColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   checked: {
     backgroundColor: colors.primary,
@@ -283,6 +452,6 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacingY._20,
+    paddingVertical: spacingY._40,
   },
 })

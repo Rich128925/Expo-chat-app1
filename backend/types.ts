@@ -5,7 +5,12 @@ export interface UserProps extends Document {
   password: string;
   name?: string;
   avatar?: string;
-  created?: Date;
+  username?: string;
+  phone?: string;
+  address?: string;
+  bio?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface ConversationProps extends Document {

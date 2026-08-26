@@ -3,6 +3,7 @@ import { Server as SocketIOServer, Socket } from "socket.io";
 import jwt from "jsonwebtoken";
 import { registerUserEvents } from "./userEvents";
 import { registerChatEvents } from "./chatEvent";
+import Conversation from "../modals/Coversation";
 
 dotenv.config();
 
@@ -34,13 +35,35 @@ export function initializeSocket(server: any): SocketIOServer {
     });
   });
 
-  io.on("connection", (socket: Socket) => {
+  io.on("connection", async (socket: Socket) => {
     console.log(
       `🔌 Socket connected: ${socket.id} (User ID: ${socket.data.userId})`
     );
 
     registerChatEvents(io, socket);
     registerUserEvents(io, socket);
+
+    try {
+      const userId = socket.data.userId;
+
+      if (!userId) {
+        console.log("No userId found on socket");
+      } else {
+        const conversations = await Conversation.find({
+          participants: userId,
+        }).select("_id");
+
+        conversations.forEach((conversation: any) => {
+          socket.join(conversation._id.toString());
+        });
+
+        console.log(
+          `✅ User ${userId} joined ${conversations.length} conversation(s)`
+        );
+      }
+    } catch (error: any) {
+      console.log("Error joining conversations:", error);
+    }
 
     socket.on("disconnect", () => {
       console.log(

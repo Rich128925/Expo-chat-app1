@@ -1,30 +1,58 @@
-import {Schema, model} from 'mongoose'
-import {UserProps} from '../types'
+import { Schema, model } from "mongoose";
 
-const UserSchema = new Schema <UserProps>({
-  email: {
-    type: String,
-    required: true,
-    unqiue: true,
-    lowercase: true,
-    trim: true
-  }, 
-  password: {
-    type: String,
-    required: true
+export interface UserProps {
+  name: string;
+  email: string;
+  password: string;
+  avatar?: string;
+  username?: string;
+  phone?: string;
+  address?: string;
+  bio?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const UserSchema = new Schema<UserProps>(
+  {
+    name: {
+      type: String,
+      required: true,
+    },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+    },
+    password: {
+      type: String,
+      required: true,
+    },
+    avatar: {
+      type: String,
+      default: "",
+    },
+    username: {
+      type: String,
+      default: "",
+    },
+    phone: {
+      type: String,
+      default: "",
+    },
+    address: {
+      type: String,
+      default: "",
+    },
+    bio: {
+      type: String,
+      default: "",
+    },
   },
-  name: {
-    type: String,
-    required: true
-  },
-  avatar: {
-    type: String,
-    default: ""
-  },
-  created: {
-    type: Date,
-    default: Date.now
+  {
+    timestamps: true,
   }
-})
+);
 
-export default model<UserProps>("User", UserSchema)
+export default model<UserProps>("User", UserSchema);

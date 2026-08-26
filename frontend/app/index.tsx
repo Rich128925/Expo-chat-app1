@@ -1,5 +1,5 @@
 import { StatusBar, StyleSheet, View } from 'react-native'
-import React, { useEffect } from 'react'
+// import React, { useEffect } from 'react'
 import Animated, { FadeInDown } from 'react-native-reanimated'
 import { colors } from '@/constants/theme'
 import { useRouter } from 'expo-router'

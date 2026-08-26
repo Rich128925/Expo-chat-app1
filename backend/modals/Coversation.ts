@@ -1,5 +1,15 @@
-import { Schema, model } from "mongoose";
-import { ConversationProps } from "../types";
+import { Schema, model, Types } from "mongoose";
+
+export interface ConversationProps {
+  type: "direct" | "group";
+  name?: string;
+  participants: Types.ObjectId[];
+  lastMessage?: Types.ObjectId;
+  createdBy: Types.ObjectId;
+  avatar?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 const ConversationSchema = new Schema<ConversationProps>(
   {
@@ -8,7 +18,10 @@ const ConversationSchema = new Schema<ConversationProps>(
       enum: ["direct", "group"],
       required: true,
     },
-    name: String,
+    name: {
+      type: String,
+      default: "",
+    },
     participants: [
       {
         type: Schema.Types.ObjectId,
@@ -23,6 +36,7 @@ const ConversationSchema = new Schema<ConversationProps>(
     createdBy: {
       type: Schema.Types.ObjectId,
       ref: "User",
+      required: true,
     },
     avatar: {
       type: String,
@@ -30,7 +44,7 @@ const ConversationSchema = new Schema<ConversationProps>(
     },
   },
   {
-    timestamps: true,
+    timestamps: true, // This automatically adds createdAt and updatedAt as Dates
   }
 );
 
